@@ -41,8 +41,15 @@ export default function Library() {
         />
         <button
           type="button"
+          onClick={() => setView('scanDish')}
+          className="btn-pop font-display shrink-0 rounded-full bg-[var(--sky)] px-3.5 py-2 text-sm"
+        >
+          🤖 拍菜
+        </button>
+        <button
+          type="button"
           onClick={() => openDishForm(null)}
-          className="btn-pop font-display shrink-0 rounded-full bg-[var(--sun)] px-4 py-2 text-sm"
+          className="btn-pop font-display shrink-0 rounded-full bg-[var(--sun)] px-3.5 py-2 text-sm"
         >
           ＋ 添加
         </button>

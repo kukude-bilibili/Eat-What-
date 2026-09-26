@@ -4,6 +4,7 @@ import Group from './pages/Group'
 import Home from './pages/Home'
 import Library from './pages/Library'
 import Result from './pages/Result'
+import ScanDish from './pages/ScanDish'
 import Setup from './pages/Setup'
 import WheelPage from './pages/WheelPage'
 import { useAppStore, type View } from './store/useAppStore'
@@ -16,6 +17,7 @@ const PAGES: Record<View, React.ComponentType> = {
   result: Result,
   library: Library,
   dishForm: DishForm,
+  scanDish: ScanDish,
 }
 
 /** 角落漂浮的食物贴纸，只在内容后面当装饰 */

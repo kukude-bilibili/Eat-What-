@@ -2,15 +2,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { BUILTIN_DISHES } from '../data/dishes'
 import { matchDishes, type MatchOutcome } from '../lib/match'
-import {
-  MAX_PEOPLE,
-  pickEnum,
-  toDish,
-  toDishList,
-  toHistory,
-  toPerson,
-  toPersonList,
-} from '../lib/sanitize'
+import { MAX_PEOPLE, clampStr, pickEnum, toDish, toDishList, toHistory, toPerson, toPersonList } from '../lib/sanitize'
+import type { DishDraft } from '../lib/ai'
 import {
   MEAL_PREFS,
   blankPerson,
@@ -22,7 +15,15 @@ import {
 
 export { MAX_PEOPLE }
 
-export type View = 'home' | 'setup' | 'group' | 'wheel' | 'result' | 'library' | 'dishForm'
+export type View =
+  | 'home'
+  | 'setup'
+  | 'group'
+  | 'wheel'
+  | 'result'
+  | 'library'
+  | 'dishForm'
+  | 'scanDish'
 export type Mode = 'single' | 'group'
 
 export interface HistoryItem {
@@ -49,6 +50,8 @@ interface AppState {
   editingDish: Dish | null
   customDishes: Dish[]
   history: HistoryItem[]
+  /** 智谱 API Key（BYOK，仅存本机） */
+  aiKey: string
 
   setView: (v: View) => void
   setMode: (m: Mode) => void
@@ -63,7 +66,11 @@ interface AppState {
   finishSpin: () => void
   openDishForm: (d: Dish | null) => void
   saveCustom: (d: Dish) => void
+  /** AI 拍菜：把识别草稿按选定场景批量入库（同名去重） */
+  saveDraftDishes: (drafts: DishDraft[], scene: Scene) => number
   removeCustom: (id: string) => void
+  /** 智谱 API Key（BYOK，只存本机 localStorage） */
+  setAiKey: (k: string) => void
   goHome: () => void
 }
 
@@ -85,6 +92,7 @@ export const useAppStore = create<AppState>()(
       editingDish: null,
       customDishes: [],
       history: [],
+      aiKey: '',
 
       setView: (view) => set({ view }),
       setMode: (mode) => set({ mode }),
@@ -127,6 +135,26 @@ export const useAppStore = create<AppState>()(
           view: 'dishForm',
         }),
 
+      saveDraftDishes: (drafts, scene) => {
+        const s = get()
+        const incoming = drafts
+          .map((d, i) =>
+            toDish({
+              ...d,
+              scenes: [scene],
+              id: `c${Date.now()}-${i}`,
+              custom: true,
+            }),
+          )
+          .filter((d): d is Dish => d !== null)
+        const existing = new Set(s.customDishes.map((x) => x.name))
+        const fresh = incoming.filter((d) => !existing.has(d.name))
+        set({ customDishes: [...s.customDishes, ...fresh], editingDish: null, view: 'library' })
+        return fresh.length
+      },
+
+      setAiKey: (k) => set({ aiKey: clampStr(k, 80) }),
+
       saveCustom: (raw) =>
         set((s) => {
           const d = toDish(raw)
@@ -158,6 +186,7 @@ export const useAppStore = create<AppState>()(
         meal: s.meal,
         mealTouched: s.mealTouched,
         avoidRecent: s.avoidRecent,
+        aiKey: s.aiKey,
       }),
       // 回读后统一清洗（清洗规则见 src/lib/sanitize.ts）
       onRehydrateStorage: () => (state) => {
@@ -171,6 +200,7 @@ export const useAppStore = create<AppState>()(
           meal: pickEnum<MealPref>(state.meal, MEAL_PREFS, '不限'),
           mealTouched: state.mealTouched === true,
           avoidRecent: state.avoidRecent !== false,
+          aiKey: clampStr(state.aiKey, 80),
         })
       },
     },
