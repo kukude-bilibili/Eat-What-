@@ -7,13 +7,15 @@ export const SCENE_EMOJI: Record<Scene, string> = {
   下馆子: '🍲',
 }
 
-/** 用餐时段：作为集体性偏好放在需求层 */
-export type MealTag = '早餐' | '夜宵'
+/** 用餐时段：作为集体性偏好放在需求层，全量打标保证合理性 */
+export type MealTag = '早餐' | '午餐' | '晚餐' | '夜宵'
 export type MealPref = '不限' | MealTag
-export const MEAL_PREFS: MealPref[] = ['不限', '早餐', '夜宵']
+export const MEAL_PREFS: MealPref[] = ['不限', '早餐', '午餐', '晚餐', '夜宵']
 export const MEAL_EMOJI: Record<MealPref, string> = {
   不限: '⏰',
   早餐: '🌅',
+  午餐: '☀️',
+  晚餐: '🌆',
   夜宵: '🌙',
 }
 

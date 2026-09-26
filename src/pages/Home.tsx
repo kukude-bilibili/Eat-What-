@@ -12,6 +12,8 @@ const SCENE_BG: Record<Scene, string> = {
 const MEAL_BG: Record<MealPref, string> = {
   不限: '#fffdf6',
   早餐: '#fff1b8',
+  午餐: '#ffe3c2',
+  晚餐: '#e3e8f9',
   夜宵: '#e8e3f9',
 }
 
@@ -19,6 +21,8 @@ const MEAL_BG: Record<MealPref, string> = {
 function autoMeal(): MealPref {
   const h = new Date().getHours()
   if (h >= 6 && h < 10) return '早餐'
+  if (h >= 10 && h < 15) return '午餐'
+  if (h >= 15 && h < 21) return '晚餐'
   if (h >= 21 || h < 3) return '夜宵'
   return '不限'
 }
@@ -88,7 +92,7 @@ export default function Home() {
         <span className="badge-pop px-2.5 py-0.5 font-display text-xs">⏰ 第 2 步</span>
         <span className="text-xs text-stone-400">什么时候吃？已按现在时间自动选好</span>
       </div>
-      <div className="mb-7 grid grid-cols-3 gap-3">
+      <div className="mb-7 grid grid-cols-5 gap-2">
         {MEAL_PREFS.map((m) => {
           const on = meal === m
           return (
@@ -96,13 +100,13 @@ export default function Home() {
               key={m}
               type="button"
               onClick={() => setMeal(m)}
-              className={`flex flex-col items-center gap-1 rounded-2xl border-[2.5px] border-[var(--ink)] py-3 transition-all active:scale-95 ${
+              className={`flex flex-col items-center gap-1 rounded-2xl border-2 border-[var(--ink)] py-2.5 transition-all active:scale-95 ${
                 on ? 'rotate-1' : 'opacity-65'
               }`}
               style={on ? { background: MEAL_BG[m], boxShadow: '3px 3px 0 var(--ink)' } : { background: 'var(--card)' }}
             >
-              <span className="text-[1.5rem]">{MEAL_EMOJI[m]}</span>
-              <span className="font-display text-sm">{m === '不限' ? '随时' : m}</span>
+              <span className="text-xl">{MEAL_EMOJI[m]}</span>
+              <span className="text-xs font-bold">{m === '不限' ? '随时' : m}</span>
             </button>
           )
         })}

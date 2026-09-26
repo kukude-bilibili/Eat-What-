@@ -19,10 +19,8 @@ export interface MatchOutcome {
 }
 
 export interface MatchOptions {
-  /** 用餐时段（集体偏好），不限 = 不过滤 */
+  /** 用餐时段（集体偏好），不限 = 不过滤；时段已全量打标，硬性生效 */
   meal?: MealPref
-  /** 时段是否为系统自动感知（自动的属于软约束，池子太窄时优先放宽） */
-  mealSoft?: boolean
   /** 最近摇过/吃过的菜名，软排除：不会因此把池子掏空 */
   recent?: string[]
 }
@@ -48,9 +46,9 @@ function likesIntersection(people: PersonPref[]): DishType[] | null {
 
 /**
  * 交集匹配 + 分层放宽：
- * 硬约束（场景/忌口/明确设置的辣度预算类型）绝不背叛；
- * 软约束（自动时段/避开最近）在池子窄于保底宽度时自动放宽；
- * 空池保命：任何时候池子为空都继续放宽直到有结果或走兜底。
+ * 时段已全量打标（早餐绝不出火锅），和场景/忌口/辣度/预算/类型一样按用户设置硬性生效；
+ * 避开最近是唯一的软约束，池子窄于保底宽度时放宽；
+ * 空池保命：级联放宽直到有结果或走兜底。
  */
 export function matchDishes(
   dishes: Dish[],
@@ -58,7 +56,7 @@ export function matchDishes(
   people: PersonPref[],
   opts: MatchOptions = {},
 ): MatchOutcome {
-  const { meal = '不限', mealSoft = false, recent } = opts
+  const { meal = '不限', recent } = opts
 
   // 硬层：场景 + 忌口，永不放宽
   const base = dishes.filter(
@@ -82,7 +80,7 @@ export function matchDishes(
   const recentSet = new Set(recent ?? [])
   let recentOn = !!(recent && recent.length)
   let typeOn = hasLikes
-  let mealTag: '早餐' | '夜宵' | null = meal === '早餐' || meal === '夜宵' ? meal : null
+  let mealTag: '早餐' | '午餐' | '晚餐' | '夜宵' | null = meal === '不限' ? null : meal
   let spicyCap: number | null = minSpicy < 3 ? minSpicy : null
   let budgetCap: number | null = minBudget
 
@@ -98,14 +96,7 @@ export function matchDishes(
 
   let pool = filter()
 
-  // ── 软约束放宽：池子窄于保底宽度时逐层放开 ──
-  // 1) 自动感知的时段（夜宵×食堂这种组合池子太窄的头号元凶）
-  if (pool.length < MIN_POOL && mealTag != null && mealSoft) {
-    relaxed.push('时段（自动）')
-    mealTag = null
-    pool = filter()
-  }
-  // 2) 避开最近吃过的
+  // ── 软约束放宽：池子窄于保底宽度时放开避开最近 ──
   if (pool.length < MIN_POOL && recentOn) {
     relaxed.push('避开最近吃过的')
     recentOn = false

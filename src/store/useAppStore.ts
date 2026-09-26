@@ -114,15 +114,13 @@ export const useAppStore = create<AppState>()(
         const s = get()
         const people = s.mode === 'single' ? [s.single] : s.groupPeople
         const recent = s.avoidRecent ? s.history.slice(0, 8).map((h) => h.name) : []
-        const mealSoft = !s.mealTouched
         const useOnlyMine = s.onlyMine && s.customDishes.length > 0
         const source = useOnlyMine ? s.customDishes : allDishes(s.customDishes)
-        let outcome = matchDishes(source, s.scene, people, { meal: s.meal, mealSoft, recent })
+        let outcome = matchDishes(source, s.scene, people, { meal: s.meal, recent })
         // 只摇我们的菜但被场景/时段清空时，回退全库并如实说明
         if (useOnlyMine && outcome.fallback && outcome.candidates.length === 0) {
           outcome = matchDishes(allDishes(s.customDishes), s.scene, people, {
             meal: s.meal,
-            mealSoft,
             recent,
           })
           outcome = {
@@ -136,7 +134,6 @@ export const useAppStore = create<AppState>()(
           for (let t = 0; t < 3 && outcome.result?.name === prev && outcome.pool.length > 1; t++) {
             outcome = matchDishes(source, s.scene, people, {
               meal: s.meal,
-              mealSoft,
               recent: [...recent, prev],
             })
           }

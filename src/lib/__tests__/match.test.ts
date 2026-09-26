@@ -60,12 +60,12 @@ it('口味没对齐（类型交集为空）时放宽想吃类型并提示', () =
 })
 
 it('预算凑不齐时逐级放宽 +5 元并提示', () => {
-  // 食堂没有 ≤5 元的菜，触发预算放宽
-  const me = { ...blankPerson('我'), budget: 5, spicy: 3 }
+  // 食堂没有 ≤1 元的菜（最便宜的茶叶蛋 3 元），触发预算放宽
+  const me = { ...blankPerson('我'), budget: 1, spicy: 3 }
   const { pool, relaxed } = matchDishes(BUILTIN_DISHES, '食堂', [me])
   expect(pool.length).toBeGreaterThan(0)
   expect(relaxed).toContain('预算（+5元）')
-  for (const d of pool) expect(d.price).toBeLessThanOrEqual(10)
+  for (const d of pool) expect(d.price).toBeLessThanOrEqual(6)
 })
 
 it('实在凑不齐时走兜底：无结果并给出兜底标记', () => {
@@ -85,12 +85,12 @@ it('时段：早餐只出现早餐档的菜', () => {
   for (const d of pool) expect(d.meals).toContain('早餐')
 })
 
-it('时段在该场景无菜可吃时放宽并提示', () => {
-  // 下馆子场景没有早餐档的菜
+it('时段硬约束：下馆子的早餐只剩粤式早茶（合理，不凑数）', () => {
   const me = blankPerson('我')
   const { pool, relaxed } = matchDishes(BUILTIN_DISHES, '下馆子', [me], { meal: '早餐' })
-  expect(pool.length).toBeGreaterThan(0)
-  expect(relaxed).toContain('时段')
+  expect(pool).toHaveLength(1)
+  expect(pool[0].name).toBe('粤式早茶')
+  expect(relaxed).toEqual([])
 })
 
 it('避开最近吃过的：刚摇出的菜不再出现', () => {
@@ -113,19 +113,26 @@ it('避开最近会把池子掏空时自动回退并如实提示', () => {
 
 // ── 池子保底（MIN_POOL）：窄池自动放宽软约束 ────────
 
-it('夜宵×食堂是窄池：硬时段保持窄，自动时段放宽到保底以上', () => {
-  const me = blankPerson('我')
-  // 用户明确选的夜宵：即使窄也保留
-  const hard = matchDishes(BUILTIN_DISHES, '食堂', [me], { meal: '夜宵' })
-  expect(hard.pool.length).toBeGreaterThan(0)
-  expect(hard.pool.length).toBeLessThan(12)
-  for (const d of hard.pool) expect(d.meals).toContain('夜宵')
-  expect(hard.relaxed).not.toContain('时段（自动）')
+it('合理性：早餐池里绝不会有火锅这种离谱东西', () => {
+  for (const scene of ['食堂', '外卖', '下馆子'] as const) {
+    const { pool } = matchDishes(BUILTIN_DISHES, scene, [blankPerson('我')], { meal: '早餐' })
+    for (const d of pool) expect(d.meals).toContain('早餐')
+  }
+})
 
-  // 系统自动感知的夜宵：池子太窄就放宽，凑出丰富候选
-  const soft = matchDishes(BUILTIN_DISHES, '食堂', [me], { meal: '夜宵', mealSoft: true })
-  expect(soft.pool.length).toBeGreaterThanOrEqual(12)
-  expect(soft.relaxed).toContain('时段（自动）')
+it('夜宵×食堂是窄池但真实：保持窄且全是夜宵档', () => {
+  const me = blankPerson('我')
+  const r = matchDishes(BUILTIN_DISHES, '食堂', [me], { meal: '夜宵' })
+  expect(r.pool.length).toBeGreaterThan(0)
+  expect(r.pool.length).toBeLessThan(12)
+  for (const d of r.pool) expect(d.meals).toContain('夜宵')
+})
+
+it('午餐池足够大且不含早餐独占的菜', () => {
+  const { pool } = matchDishes(BUILTIN_DISHES, '食堂', [blankPerson('我')], { meal: '午餐' })
+  expect(pool.length).toBeGreaterThan(50)
+  for (const d of pool) expect(d.meals).toContain('午餐')
+  expect(pool.some((d) => d.name === '菠萝包')).toBe(false)
 })
 
 it('明确设置的硬约束（辣度/预算/类型）不因池子窄而被背叛', () => {
