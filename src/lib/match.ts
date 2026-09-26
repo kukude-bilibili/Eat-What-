@@ -1,4 +1,4 @@
-import type { Dish, DishType, PersonPref, Scene } from '../types'
+import type { Dish, DishType, MealPref, PersonPref, Scene } from '../types'
 import { SPICY_LABELS } from '../types'
 import { secureInt } from './random'
 
@@ -13,6 +13,13 @@ export interface MatchOutcome {
   fallback: boolean
   /** 兜底候选（冲突最小的前 3 道） */
   candidates: Dish[]
+}
+
+export interface MatchOptions {
+  /** 用餐时段（集体偏好），不限 = 不过滤 */
+  meal?: MealPref
+  /** 最近摇过/吃过的菜名，软排除：不会因此把池子掏空 */
+  recent?: string[]
 }
 
 /** 忌口是否拦截这道菜 */
@@ -38,10 +45,25 @@ function likesIntersection(people: PersonPref[]): DishType[] | null {
  * 多人交集匹配 + 逐级放宽：
  * 完全匹配 → 放宽想吃类型 → 放宽辣度(+1) → 放宽预算(+5元) → 兜底（冲突最小前3）
  */
-export function matchDishes(dishes: Dish[], scene: Scene, people: PersonPref[]): MatchOutcome {
-  const base = dishes.filter(
+export function matchDishes(
+  dishes: Dish[],
+  scene: Scene,
+  people: PersonPref[],
+  opts: MatchOptions = {},
+): MatchOutcome {
+  const { meal = '不限', recent } = opts
+
+  let base = dishes.filter(
     (d) => d.scenes.includes(scene) && people.every((p) => !dishBlocked(d, p.avoid)),
   )
+
+  // 软排除最近吃过的：只有在不掏空池子时才生效
+  let recentDropped = false
+  if (recent && recent.length > 0 && base.length > 0) {
+    const kept = base.filter((d) => !recent.includes(d.name))
+    if (kept.length === 0) recentDropped = true
+    else base = kept
+  }
 
   const budgets = people.map((p) => p.budget).filter((b): b is number => b != null)
   const minBudget = budgets.length ? Math.min(...budgets) : null
@@ -57,8 +79,10 @@ export function matchDishes(dishes: Dish[], scene: Scene, people: PersonPref[]):
   // 类型从一开始就没对齐：不限制类型，但要在提示里如实记录
   const relaxed: string[] = []
   if (likesConflict) relaxed.push('想吃类型')
+  if (recentDropped) relaxed.push('避开最近吃过的')
 
   let typeOn = hasLikes
+  let mealTag: '早餐' | '夜宵' | null = meal === '早餐' || meal === '夜宵' ? meal : null
   let spicyCap: number | null = minSpicy < 3 ? minSpicy : null
   let budgetCap: number | null = minBudget
 
@@ -66,6 +90,7 @@ export function matchDishes(dishes: Dish[], scene: Scene, people: PersonPref[]):
     base.filter(
       (d) =>
         (!typeOn || likes!.includes(d.type)) &&
+        (!mealTag || !!d.meals?.includes(mealTag)) &&
         (spicyCap == null || d.spicy <= spicyCap) &&
         (budgetCap == null || d.price <= budgetCap),
     )
@@ -75,6 +100,11 @@ export function matchDishes(dishes: Dish[], scene: Scene, people: PersonPref[]):
   if (pool.length === 0 && typeOn) {
     relaxed.push('想吃类型')
     typeOn = false
+    pool = filter()
+  }
+  if (pool.length === 0 && mealTag != null) {
+    relaxed.push('时段')
+    mealTag = null
     pool = filter()
   }
   if (pool.length === 0 && spicyCap != null) {

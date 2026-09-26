@@ -75,3 +75,38 @@ it('实在凑不齐时走兜底：无结果并给出兜底标记', () => {
   expect(fallback).toBe(true)
   expect(pool).toHaveLength(0)
 })
+
+// ── 需求层 v2：时段 / 避开最近 ──────────────────────
+
+it('时段：早餐只出现早餐档的菜', () => {
+  const me = blankPerson('我')
+  const { pool } = matchDishes(BUILTIN_DISHES, '食堂', [me], { meal: '早餐' })
+  expect(pool.length).toBeGreaterThan(0)
+  for (const d of pool) expect(d.meals).toContain('早餐')
+})
+
+it('时段在该场景无菜可吃时放宽并提示', () => {
+  // 下馆子场景没有早餐档的菜
+  const me = blankPerson('我')
+  const { pool, relaxed } = matchDishes(BUILTIN_DISHES, '下馆子', [me], { meal: '早餐' })
+  expect(pool.length).toBeGreaterThan(0)
+  expect(relaxed).toContain('时段')
+})
+
+it('避开最近吃过的：刚摇出的菜不再出现', () => {
+  const me = blankPerson('我')
+  const first = matchDishes(BUILTIN_DISHES, '食堂', [me])
+  const name = first.result!.name
+  const again = matchDishes(BUILTIN_DISHES, '食堂', [me], { recent: [name] })
+  expect(again.pool.every((d) => d.name !== name)).toBe(true)
+  // 池子没有被掏空，不该提示
+  expect(again.relaxed).not.toContain('避开最近吃过的')
+})
+
+it('避开最近会把池子掏空时自动回退并如实提示', () => {
+  const me = blankPerson('我')
+  const allCanteen = BUILTIN_DISHES.filter((d) => d.scenes.includes('食堂')).map((d) => d.name)
+  const { pool, relaxed } = matchDishes(BUILTIN_DISHES, '食堂', [me], { recent: allCanteen })
+  expect(pool.length).toBeGreaterThan(0)
+  expect(relaxed).toContain('避开最近吃过的')
+})

@@ -4,13 +4,21 @@ import { BUILTIN_DISHES } from '../data/dishes'
 import { matchDishes, type MatchOutcome } from '../lib/match'
 import {
   MAX_PEOPLE,
+  pickEnum,
   toDish,
   toDishList,
   toHistory,
   toPerson,
   toPersonList,
 } from '../lib/sanitize'
-import { blankPerson, type Dish, type PersonPref, type Scene } from '../types'
+import {
+  MEAL_PREFS,
+  blankPerson,
+  type Dish,
+  type MealPref,
+  type PersonPref,
+  type Scene,
+} from '../types'
 
 export { MAX_PEOPLE }
 
@@ -27,9 +35,17 @@ interface AppState {
   view: View
   mode: Mode
   scene: Scene
+  /** 用餐时段（集体偏好），首页按时钟自动感知，可手动改 */
+  meal: MealPref
+  /** 用户是否手动调过时段（调过就不再自动感知） */
+  mealTouched: boolean
+  /** 避开最近摇过/吃过的菜（按本地历史） */
+  avoidRecent: boolean
   single: PersonPref
   groupPeople: PersonPref[]
   outcome: MatchOutcome | null
+  /** 单人模式“再来一次”的次数 */
+  respinCount: number
   editingDish: Dish | null
   customDishes: Dish[]
   history: HistoryItem[]
@@ -37,10 +53,12 @@ interface AppState {
   setView: (v: View) => void
   setMode: (m: Mode) => void
   setScene: (s: Scene) => void
+  setMeal: (m: MealPref, touched?: boolean) => void
+  setAvoidRecent: (v: boolean) => void
   setSingle: (p: PersonPref) => void
   setGroupPeople: (p: PersonPref[]) => void
-  /** 计算匹配结果：正常进转盘页，凑不齐直接进结果页（兜底候选） */
-  startSpin: () => void
+  /** 计算匹配结果：正常进转盘页，凑不齐直接进结果页（兜底候选）；respin=true 表示单人“再来一次” */
+  startSpin: (respin?: boolean) => void
   /** 转盘停稳后调用：记历史、进结果页 */
   finishSpin: () => void
   openDishForm: (d: Dish | null) => void
@@ -57,9 +75,13 @@ export const useAppStore = create<AppState>()(
       view: 'home',
       mode: 'single',
       scene: '食堂',
+      meal: '不限',
+      mealTouched: false,
+      avoidRecent: true,
       single: blankPerson('我'),
       groupPeople: [],
       outcome: null,
+      respinCount: 0,
       editingDish: null,
       customDishes: [],
       history: [],
@@ -67,14 +89,25 @@ export const useAppStore = create<AppState>()(
       setView: (view) => set({ view }),
       setMode: (mode) => set({ mode }),
       setScene: (scene) => set({ scene }),
+      setMeal: (m, touched = true) =>
+        set((s) => ({ meal: m, mealTouched: touched ? true : s.mealTouched })),
+      setAvoidRecent: (avoidRecent) => set({ avoidRecent }),
       setSingle: (p) => set({ single: toPerson(p, '我') }),
       setGroupPeople: (people) => set({ groupPeople: toPersonList(people) }),
 
-      startSpin: () => {
+      startSpin: (respin = false) => {
         const s = get()
         const people = s.mode === 'single' ? [s.single] : s.groupPeople
-        const outcome = matchDishes(allDishes(s.customDishes), s.scene, people)
-        set({ outcome, view: outcome.fallback ? 'result' : 'wheel' })
+        const recent = s.avoidRecent ? s.history.slice(0, 8).map((h) => h.name) : []
+        const outcome = matchDishes(allDishes(s.customDishes), s.scene, people, {
+          meal: s.meal,
+          recent,
+        })
+        set({
+          outcome,
+          respinCount: respin ? s.respinCount + 1 : 0,
+          view: outcome.fallback ? 'result' : 'wheel',
+        })
       },
 
       finishSpin: () => {
@@ -122,6 +155,9 @@ export const useAppStore = create<AppState>()(
         history: s.history,
         scene: s.scene,
         mode: s.mode,
+        meal: s.meal,
+        mealTouched: s.mealTouched,
+        avoidRecent: s.avoidRecent,
       }),
       // 回读后统一清洗（清洗规则见 src/lib/sanitize.ts）
       onRehydrateStorage: () => (state) => {
@@ -132,6 +168,9 @@ export const useAppStore = create<AppState>()(
           customDishes: toDishList(state.customDishes),
           history: toHistory(state.history),
           scene: state.scene === '外卖' || state.scene === '下馆子' ? state.scene : '食堂',
+          meal: pickEnum<MealPref>(state.meal, MEAL_PREFS, '不限'),
+          mealTouched: state.mealTouched === true,
+          avoidRecent: state.avoidRecent !== false,
         })
       },
     },

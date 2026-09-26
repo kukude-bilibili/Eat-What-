@@ -1,5 +1,6 @@
+import { useEffect } from 'react'
 import { useAppStore } from '../store/useAppStore'
-import { SCENES, SCENE_EMOJI, type Scene } from '../types'
+import { MEAL_PREFS, MEAL_EMOJI, SCENES, SCENE_EMOJI, type MealPref, type Scene } from '../types'
 
 /** 每个场景的专属底色（选中态） */
 const SCENE_BG: Record<Scene, string> = {
@@ -8,8 +9,28 @@ const SCENE_BG: Record<Scene, string> = {
   下馆子: '#fbdcdc',
 }
 
+const MEAL_BG: Record<MealPref, string> = {
+  不限: '#fffdf6',
+  早餐: '#fff1b8',
+  夜宵: '#e8e3f9',
+}
+
+/** 按当前时钟猜时段 */
+function autoMeal(): MealPref {
+  const h = new Date().getHours()
+  if (h >= 6 && h < 10) return '早餐'
+  if (h >= 21 || h < 3) return '夜宵'
+  return '不限'
+}
+
 export default function Home() {
-  const { scene, setScene, setMode, setView, history } = useAppStore()
+  const { scene, setScene, meal, setMeal, mealTouched, setMode, setView, history } = useAppStore()
+
+  // 用户没手动调过时段时，按时钟自动感知
+  useEffect(() => {
+    if (!mealTouched) setMeal(autoMeal(), false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return (
     <div>
@@ -62,6 +83,31 @@ export default function Home() {
       </div>
 
       {/* 模式入口 */}
+      {/* 时段 */}
+      <div className="mb-3 flex items-center gap-2">
+        <span className="badge-pop px-2.5 py-0.5 font-display text-xs">⏰ 第 2 步</span>
+        <span className="text-xs text-stone-400">什么时候吃？已按现在时间自动选好</span>
+      </div>
+      <div className="mb-7 grid grid-cols-3 gap-3">
+        {MEAL_PREFS.map((m) => {
+          const on = meal === m
+          return (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMeal(m)}
+              className={`flex flex-col items-center gap-1 rounded-2xl border-[2.5px] border-[var(--ink)] py-3 transition-all active:scale-95 ${
+                on ? 'rotate-1' : 'opacity-65'
+              }`}
+              style={on ? { background: MEAL_BG[m], boxShadow: '3px 3px 0 var(--ink)' } : { background: 'var(--card)' }}
+            >
+              <span className="text-[1.5rem]">{MEAL_EMOJI[m]}</span>
+              <span className="font-display text-sm">{m === '不限' ? '随时' : m}</span>
+            </button>
+          )
+        })}
+      </div>
+
       <div className="space-y-4">
         <button
           type="button"

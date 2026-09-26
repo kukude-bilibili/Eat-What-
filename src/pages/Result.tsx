@@ -38,7 +38,7 @@ function Confetti() {
 }
 
 export default function Result() {
-  const { outcome, mode, single, groupPeople, goHome } = useAppStore()
+  const { outcome, mode, single, groupPeople, respinCount, startSpin, goHome } = useAppStore()
   const [copied, setCopied] = useState(false)
   const [header] = useState(() => pickHeader())
   const [warm] = useState(() => pickWarmLine())
@@ -149,7 +149,28 @@ export default function Result() {
           🍚 就吃它
         </button>
       </div>
-      <p className="mt-5 font-display text-xs text-stone-400">好日子要坚定，干饭去罢</p>
+
+      {/* 单人模式专属后悔药：重摇会自动避开刚摇出的菜 */}
+      {mode === 'single' && (
+        <div className="mx-auto mt-4 w-full max-w-xs">
+          <button
+            type="button"
+            onClick={() => startSpin(true)}
+            className="btn-pop font-display w-full rounded-2xl bg-[var(--sun)] py-3.5 text-lg"
+          >
+            🔄 看到就不想吃？再来一次
+          </button>
+          {respinCount > 0 && (
+            <p className="mt-2.5 font-display text-xs text-stone-400">
+              天意已被你改了 {respinCount} 次{respinCount >= 3 ? '，这次真的要认了' : ''}
+            </p>
+          )}
+        </div>
+      )}
+
+      <p className="mt-5 font-display text-xs text-stone-400">
+        {mode === 'single' ? '一人吃饭，偶尔任性可以理解' : '摇中就认，好日子要坚定'}
+      </p>
     </div>
   )
 }

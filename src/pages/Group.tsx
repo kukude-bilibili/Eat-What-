@@ -18,7 +18,8 @@ function summarize(p: PersonPref): string {
 }
 
 export default function Group() {
-  const { groupPeople, setGroupPeople, startSpin, setView } = useAppStore()
+  const { groupPeople, setGroupPeople, startSpin, setView, meal, avoidRecent, history } =
+    useAppStore()
   const [editing, setEditing] = useState<PersonPref | null>(null)
 
   const beginAdd = () => setEditing(blankPerson(`${groupPeople.length + 1}号`))
@@ -134,6 +135,11 @@ export default function Group() {
                 <span className="mx-1.5 text-stone-300">|</span>
                 <span className="font-bold">辣度</span> {scope.spicyLabel}
               </p>
+              <p className="mt-1 text-sm">
+                <span className="font-bold">时段</span> {meal === '不限' ? '不限' : meal}
+                {avoidRecent && history.length > 0 &&
+                  ` · 已避开最近摇过的 ${Math.min(history.length, 8)} 道`}
+              </p>
               {scope.avoidAll.length > 0 && (
                 <p className="mt-1 text-sm">
                   <span className="font-bold">忌口</span> {scope.avoidAll.join('、')}
@@ -166,7 +172,7 @@ export default function Group() {
         )}
         <button
           type="button"
-          onClick={startSpin}
+          onClick={() => startSpin()}
           disabled={!canSpin}
           className="btn-pop font-display w-full rounded-2xl bg-[var(--primary)] py-4 text-xl text-white"
         >
