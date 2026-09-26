@@ -1,6 +1,8 @@
 # CONTEXT — 今天吃啥（what-to-eat）
 
 > 单上下文域文档。产品定义、关键决策、边界都在这里。
+> 架构决策记录（ADR）：`docs/adr/`——ADR-0001 菜单库统一模型、ADR-0002 不做平台菜单 API。
+> 菜单库 v2 进行中：Schema/迁移/验收草案见 `docs/schema/` 与 `docs/menu-library-acceptance-and-merge.md`。
 
 ## 一句话定义
 
