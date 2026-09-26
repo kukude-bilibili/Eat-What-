@@ -1,0 +1,9 @@
+# Cloudflare Pages 安全响应头（部署后自动生效，仅对生产环境）
+# 说明：应用为纯静态站、无内联脚本/样式、无外部请求，因此 CSP 可以收紧到 self
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'

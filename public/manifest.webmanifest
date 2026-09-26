@@ -1,0 +1,17 @@
+{
+  "name": "今天吃啥 · 饭点摇一摇",
+  "short_name": "今天吃啥",
+  "description": "摇一摇，30秒定下吃哪道菜，宿舍不吵架",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbf1de",
+  "theme_color": "#fbf1de",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

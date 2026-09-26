@@ -1,0 +1,183 @@
+@import "tailwindcss";
+
+/* ── 食堂饭票 · 复古贴纸 设计系统 ─────────────────── */
+:root {
+  --ink: #3f2a1a;        /* 深咖啡，描边与正文 */
+  --paper: #fbf1de;      /* 奶油纸底 */
+  --card: #fffdf6;       /* 贴纸卡面 */
+  --primary: #f2542d;    /* 番茄橘 */
+  --primary-deep: #c93a12;
+  --sun: #ffc531;        /* 芥末黄 */
+  --leaf: #63a46c;       /* 菜叶绿 */
+  --sky: #6bb3d6;        /* 汽水蓝 */
+  --blush: #f7a8b8;      /* 桃粉 */
+}
+
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image: radial-gradient(rgba(63, 42, 26, 0.08) 1.2px, transparent 1.2px);
+  background-size: 20px 20px;
+  font-family: system-ui, -apple-system, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* 标题字体：站酷快乐体（npm 本地打包） */
+.font-display {
+  font-family: "ZCOOL KuaiLe", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* 贴纸卡片：厚描边 + 硬投影 */
+.sticker {
+  background: var(--card);
+  border: 2.5px solid var(--ink);
+  border-radius: 1.25rem;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+.sticker-flat {
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: 0.9rem;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+/* 实体按压按钮：底部厚度，按下时被"压扁" */
+.btn-pop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 2.5px solid var(--ink);
+  box-shadow: 0 5px 0 var(--ink);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, filter 0.15s ease;
+  user-select: none;
+}
+.btn-pop:active:not(:disabled) {
+  transform: translateY(5px);
+  box-shadow: 0 0 0 var(--ink);
+}
+.btn-pop:disabled {
+  opacity: 0.45;
+  transform: none;
+  box-shadow: 0 5px 0 var(--ink);
+}
+
+/* 标签（chips） */
+.chip {
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  transition: transform 0.12s ease, background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+.chip:active {
+  transform: scale(0.93);
+}
+.chip-on {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+/* 输入框 */
+.input-sticker {
+  background: var(--card);
+  border: 2px solid var(--ink);
+  border-radius: 0.9rem;
+  color: var(--ink);
+}
+.input-sticker:focus {
+  outline: none;
+  box-shadow: 3px 3px 0 var(--sun);
+}
+.input-sticker::placeholder {
+  color: rgba(63, 42, 26, 0.35);
+}
+
+/* 小徽章贴纸（步骤标签等） */
+.badge-pop {
+  display: inline-block;
+  background: var(--sun);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: 2px 2px 0 var(--ink);
+  line-height: 1.4;
+}
+
+/* ── 动画 ─────────────────────────────────────────── */
+@keyframes pop-in {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes fade-up {
+  from { transform: translateY(14px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes wiggle {
+  0%, 100% { transform: rotate(-2.5deg); }
+  50% { transform: rotate(2.5deg); }
+}
+@keyframes bounce-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+@keyframes float-y {
+  0%, 100% { transform: translateY(0) rotate(var(--r, 0deg)); }
+  50% { transform: translateY(-9px) rotate(var(--r, 0deg)); }
+}
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+@keyframes confetti-fall {
+  0% { transform: translateY(-8vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(105vh) rotate(680deg); opacity: 0.85; }
+}
+@keyframes stamp-in {
+  0% { transform: scale(2.4) rotate(-30deg); opacity: 0; }
+  60% { transform: scale(0.88) rotate(-12deg); opacity: 1; }
+  100% { transform: scale(1) rotate(-12deg); opacity: 1; }
+}
+
+.animate-pop-in { animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.animate-fade-up { animation: fade-up 0.4s ease-out both; }
+.animate-wiggle { animation: wiggle 1.8s ease-in-out infinite; }
+.animate-bounce-soft { animation: bounce-soft 1.4s ease-in-out infinite; }
+.animate-float { animation: float-y 3.6s ease-in-out infinite; }
+.animate-spin-slow { animation: spin-slow 14s linear infinite; }
+.animate-stamp { animation: stamp-in 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 0.25s both; }
+
+.confetti-piece {
+  position: absolute;
+  top: -6vh;
+  pointer-events: none;
+  animation: confetti-fall linear forwards;
+}
+
+/* 无障碍：用户系统开了"减少动态效果"时，关掉所有装饰性动画 */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pop-in,
+  .animate-fade-up,
+  .animate-wiggle,
+  .animate-bounce-soft,
+  .animate-float,
+  .animate-spin-slow,
+  .animate-stamp,
+  .confetti-piece {
+    animation: none !important;
+  }
+  .btn-pop,
+  .chip {
+    transition: none !important;
+  }
+}
