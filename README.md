@@ -12,14 +12,12 @@ npm run build    # 产物在 dist/
 npm run preview  # 本地预览构建产物
 ```
 
-## 部署（Cloudflare Pages，免费）
+## 部署
 
-1. 把仓库推到 GitHub
-2. Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git
-3. 构建配置：Framework preset 选 **Vite**，Build command `npm run build`，输出目录 `dist`
-4. 部署完成后得到 `xxx.pages.dev` 域名，把二维码发给同学即可
+**GitHub Pages（已配置，全自动）**：推送到 `main` 即自动构建发布（`.github/workflows/deploy.yml`）。
+线上地址：**https://kukude-bilibili.github.io/Eat-What-/**
 
-> 备选：Vercel / Netlify 同理（都是纯静态站点，零后端）。
+> 备选 Cloudflare Pages（国内访问通常更稳，且 `public/_headers` 的安全响应头生效）：Connect to Git → Vite 预设 → 输出目录 `dist`，部署后把 vite.config.ts 的 `base` 改回 `'/'`。
 
 ## 技术栈
 
