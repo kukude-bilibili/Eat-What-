@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { BUILTIN_DISHES } from '../data/dishes'
 import { matchDishes, type MatchOutcome } from '../lib/match'
+import { parsePack } from '../lib/pack'
 import { MAX_PEOPLE, clampStr, pickEnum, toDish, toDishList, toHistory, toPerson, toPersonList } from '../lib/sanitize'
 import type { DishDraft } from '../lib/ai'
 import {
@@ -42,6 +43,8 @@ interface AppState {
   mealTouched: boolean
   /** 避开最近摇过/吃过的菜（按本地历史） */
   avoidRecent: boolean
+  /** 只摇自己的菜（校园菜单库模式），攒满 6 道后可开 */
+  onlyMine: boolean
   single: PersonPref
   groupPeople: PersonPref[]
   outcome: MatchOutcome | null
@@ -69,6 +72,9 @@ interface AppState {
   /** AI 拍菜：把识别草稿按选定场景批量入库（同名去重） */
   saveDraftDishes: (drafts: DishDraft[], scene: Scene) => number
   removeCustom: (id: string) => void
+  /** 导入校园菜单包（粘贴文本）：全量清洗 + 同名去重，返回 { 数量, 错误 } */
+  importPack: (text: string) => { count: number; error?: string }
+  setOnlyMine: (v: boolean) => void
   /** 智谱 API Key（BYOK，只存本机 localStorage） */
   setAiKey: (k: string) => void
   goHome: () => void
@@ -85,6 +91,7 @@ export const useAppStore = create<AppState>()(
       meal: '不限',
       mealTouched: false,
       avoidRecent: true,
+      onlyMine: false,
       single: blankPerson('我'),
       groupPeople: [],
       outcome: null,
@@ -107,10 +114,33 @@ export const useAppStore = create<AppState>()(
         const s = get()
         const people = s.mode === 'single' ? [s.single] : s.groupPeople
         const recent = s.avoidRecent ? s.history.slice(0, 8).map((h) => h.name) : []
-        const outcome = matchDishes(allDishes(s.customDishes), s.scene, people, {
-          meal: s.meal,
-          recent,
-        })
+        const mealSoft = !s.mealTouched
+        const useOnlyMine = s.onlyMine && s.customDishes.length > 0
+        const source = useOnlyMine ? s.customDishes : allDishes(s.customDishes)
+        let outcome = matchDishes(source, s.scene, people, { meal: s.meal, mealSoft, recent })
+        // 只摇我们的菜但被场景/时段清空时，回退全库并如实说明
+        if (useOnlyMine && outcome.fallback && outcome.candidates.length === 0) {
+          outcome = matchDishes(allDishes(s.customDishes), s.scene, people, {
+            meal: s.meal,
+            mealSoft,
+            recent,
+          })
+          outcome = {
+            ...outcome,
+            relaxed: ['校园菜单库（这个场景没菜，先摇全库）', ...outcome.relaxed],
+          }
+        }
+        // 重摇别摇回同一道：最多补摇 3 次
+        const prev = s.history[0]?.name
+        if (respin && prev) {
+          for (let t = 0; t < 3 && outcome.result?.name === prev && outcome.pool.length > 1; t++) {
+            outcome = matchDishes(source, s.scene, people, {
+              meal: s.meal,
+              mealSoft,
+              recent: [...recent, prev],
+            })
+          }
+        }
         set({
           outcome,
           respinCount: respin ? s.respinCount + 1 : 0,
@@ -171,6 +201,20 @@ export const useAppStore = create<AppState>()(
       removeCustom: (id) =>
         set((s) => ({ customDishes: s.customDishes.filter((x) => x.id !== id) })),
 
+      importPack: (text) => {
+        const s = get()
+        const { dishes, error } = parsePack(text)
+        if (error || dishes.length === 0) return { count: 0, error }
+        const existing = new Set(s.customDishes.map((x) => x.name))
+        const fresh = dishes
+          .map((d, i) => ({ ...d, id: `p${Date.now()}-${i}` }))
+          .filter((d) => !existing.has(d.name))
+        set({ customDishes: [...s.customDishes, ...fresh] })
+        return { count: fresh.length, error: undefined }
+      },
+
+      setOnlyMine: (onlyMine) => set({ onlyMine }),
+
       goHome: () => set({ view: 'home', outcome: null }),
     }),
     {
@@ -186,6 +230,7 @@ export const useAppStore = create<AppState>()(
         meal: s.meal,
         mealTouched: s.mealTouched,
         avoidRecent: s.avoidRecent,
+        onlyMine: s.onlyMine,
         aiKey: s.aiKey,
       }),
       // 回读后统一清洗（清洗规则见 src/lib/sanitize.ts）
@@ -200,6 +245,7 @@ export const useAppStore = create<AppState>()(
           meal: pickEnum<MealPref>(state.meal, MEAL_PREFS, '不限'),
           mealTouched: state.mealTouched === true,
           avoidRecent: state.avoidRecent !== false,
+          onlyMine: state.onlyMine === true,
           aiKey: clampStr(state.aiKey, 80),
         })
       },

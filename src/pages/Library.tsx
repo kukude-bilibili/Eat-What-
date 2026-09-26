@@ -1,13 +1,18 @@
 import { useMemo, useState } from 'react'
 import { BUILTIN_DISHES } from '../data/dishes'
+import { exportPack } from '../lib/pack'
 import { PageHeader } from '../components/PageHeader'
 import { useAppStore } from '../store/useAppStore'
 import { DISH_TYPES, SPICY_LABELS, type Dish } from '../types'
 
 export default function Library() {
-  const { customDishes, openDishForm, setView, removeCustom } = useAppStore()
+  const { customDishes, onlyMine, setOnlyMine, importPack, openDishForm, setView, removeCustom } =
+    useAppStore()
   const [q, setQ] = useState('')
   const [typeFilter, setTypeFilter] = useState<string>('全部')
+  const [showImport, setShowImport] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [importMsg, setImportMsg] = useState('')
 
   const all = useMemo(() => [...customDishes, ...BUILTIN_DISHES], [customDishes])
 
@@ -20,6 +25,15 @@ export default function Library() {
       ),
     [all, q, typeFilter],
   )
+
+  const doImport = () => {
+    const r = importPack(importText)
+    setImportMsg(r.error ? `❌ ${r.error}` : `✅ 已导入 ${r.count} 道（同名自动跳过）`)
+    if (!r.error) {
+      setImportText('')
+      setShowImport(false)
+    }
+  }
 
   // 自己的菜 = 编辑；内置菜由 store 抄一份成自定义草稿
   const tapDish = (d: Dish) => openDishForm(d)
@@ -66,6 +80,62 @@ export default function Library() {
             {t}
           </button>
         ))}
+      </div>
+
+      {/* 校园菜单库 */}
+      <div className="sticker-flat mb-4 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-display text-base">🏫 校园菜单库</div>
+            <div className="mt-0.5 text-xs text-stone-400">
+              {customDishes.length} 道自己的菜{onlyMine ? ' · 转盘只出这些' : ''}
+            </div>
+          </div>
+          {customDishes.length >= 6 || onlyMine ? (
+            <button
+              type="button"
+              className={`chip shrink-0 px-3 py-1.5 text-sm font-bold ${onlyMine ? 'chip-on' : ''}`}
+              onClick={() => setOnlyMine(!onlyMine)}
+            >
+              {onlyMine ? '只摇我们的' : '混着摇'}
+            </button>
+          ) : (
+            <span className="shrink-0 text-xs text-stone-400">攒满 6 道解锁</span>
+          )}
+        </div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="chip text-xs"
+            disabled={!customDishes.length}
+            onClick={() => {
+              navigator.clipboard
+                .writeText(exportPack(customDishes))
+                .then(() => setImportMsg('📤 菜单包已复制，发给同学在下面粘贴导入'))
+                .catch(() => setImportMsg('复制失败：剪贴板不可用'))
+            }}
+          >
+            📤 导出菜单包
+          </button>
+          <button type="button" className="chip text-xs" onClick={() => setShowImport(!showImport)}>
+            📥 导入菜单包
+          </button>
+        </div>
+        {showImport && (
+          <div className="mt-2">
+            <textarea
+              value={importText}
+              onChange={(e) => setImportText(e.target.value)}
+              rows={4}
+              placeholder="粘贴同学发你的菜单包文本…"
+              className="input-sticker w-full text-xs"
+            />
+            <button type="button" className="chip chip-on mt-2 text-xs" onClick={doImport}>
+              导入并去重
+            </button>
+          </div>
+        )}
+        {importMsg && <p className="mt-2 text-xs text-stone-500">{importMsg}</p>}
       </div>
 
       <div className="space-y-2.5">

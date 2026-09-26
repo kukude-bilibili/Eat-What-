@@ -2,6 +2,9 @@ import type { Dish, DishType, MealPref, PersonPref, Scene } from '../types'
 import { SPICY_LABELS } from '../types'
 import { secureInt } from './random'
 
+/** 池子保底宽度：软约束（自动时段/避开最近）在池子低于它时自动放宽，宁可宽不可窄 */
+export const MIN_POOL = 12
+
 export interface MatchOutcome {
   /** 最终可用于转盘的菜品池 */
   pool: Dish[]
@@ -18,6 +21,8 @@ export interface MatchOutcome {
 export interface MatchOptions {
   /** 用餐时段（集体偏好），不限 = 不过滤 */
   meal?: MealPref
+  /** 时段是否为系统自动感知（自动的属于软约束，池子太窄时优先放宽） */
+  mealSoft?: boolean
   /** 最近摇过/吃过的菜名，软排除：不会因此把池子掏空 */
   recent?: string[]
 }
@@ -42,8 +47,10 @@ function likesIntersection(people: PersonPref[]): DishType[] | null {
 }
 
 /**
- * 多人交集匹配 + 逐级放宽：
- * 完全匹配 → 放宽想吃类型 → 放宽辣度(+1) → 放宽预算(+5元) → 兜底（冲突最小前3）
+ * 交集匹配 + 分层放宽：
+ * 硬约束（场景/忌口/明确设置的辣度预算类型）绝不背叛；
+ * 软约束（自动时段/避开最近）在池子窄于保底宽度时自动放宽；
+ * 空池保命：任何时候池子为空都继续放宽直到有结果或走兜底。
  */
 export function matchDishes(
   dishes: Dish[],
@@ -51,19 +58,12 @@ export function matchDishes(
   people: PersonPref[],
   opts: MatchOptions = {},
 ): MatchOutcome {
-  const { meal = '不限', recent } = opts
+  const { meal = '不限', mealSoft = false, recent } = opts
 
-  let base = dishes.filter(
+  // 硬层：场景 + 忌口，永不放宽
+  const base = dishes.filter(
     (d) => d.scenes.includes(scene) && people.every((p) => !dishBlocked(d, p.avoid)),
   )
-
-  // 软排除最近吃过的：只有在不掏空池子时才生效
-  let recentDropped = false
-  if (recent && recent.length > 0 && base.length > 0) {
-    const kept = base.filter((d) => !recent.includes(d.name))
-    if (kept.length === 0) recentDropped = true
-    else base = kept
-  }
 
   const budgets = people.map((p) => p.budget).filter((b): b is number => b != null)
   const minBudget = budgets.length ? Math.min(...budgets) : null
@@ -76,11 +76,11 @@ export function matchDishes(
   // 放宽前记录原始约束，兜底打分用
   const orig = { hasLikes, likes, minSpicy, minBudget }
 
-  // 类型从一开始就没对齐：不限制类型，但要在提示里如实记录
   const relaxed: string[] = []
   if (likesConflict) relaxed.push('想吃类型')
-  if (recentDropped) relaxed.push('避开最近吃过的')
 
+  const recentSet = new Set(recent ?? [])
+  let recentOn = !!(recent && recent.length)
   let typeOn = hasLikes
   let mealTag: '早餐' | '夜宵' | null = meal === '早餐' || meal === '夜宵' ? meal : null
   let spicyCap: number | null = minSpicy < 3 ? minSpicy : null
@@ -89,6 +89,7 @@ export function matchDishes(
   const filter = () =>
     base.filter(
       (d) =>
+        (!recentOn || !recentSet.has(d.name)) &&
         (!typeOn || likes!.includes(d.type)) &&
         (!mealTag || !!d.meals?.includes(mealTag)) &&
         (spicyCap == null || d.spicy <= spicyCap) &&
@@ -97,14 +98,29 @@ export function matchDishes(
 
   let pool = filter()
 
-  if (pool.length === 0 && typeOn) {
-    relaxed.push('想吃类型')
-    typeOn = false
+  // ── 软约束放宽：池子窄于保底宽度时逐层放开 ──
+  // 1) 自动感知的时段（夜宵×食堂这种组合池子太窄的头号元凶）
+  if (pool.length < MIN_POOL && mealTag != null && mealSoft) {
+    relaxed.push('时段（自动）')
+    mealTag = null
     pool = filter()
   }
+  // 2) 避开最近吃过的
+  if (pool.length < MIN_POOL && recentOn) {
+    relaxed.push('避开最近吃过的')
+    recentOn = false
+    pool = filter()
+  }
+
+  // ── 空池保命：任何约束组合空池都继续放宽 ──
   if (pool.length === 0 && mealTag != null) {
     relaxed.push('时段')
     mealTag = null
+    pool = filter()
+  }
+  if (pool.length === 0 && typeOn) {
+    relaxed.push('想吃类型')
+    typeOn = false
     pool = filter()
   }
   if (pool.length === 0 && spicyCap != null) {

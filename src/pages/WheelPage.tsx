@@ -20,11 +20,10 @@ export default function WheelPage() {
 
   return (
     <div className="pt-6">
-      {outcome.relaxed.length > 0 && (
-        <p className="badge-pop mx-auto mb-6 w-fit px-4 py-1.5 text-xs">
-          为了凑齐大家，放宽了{outcome.relaxed.join('、')}
-        </p>
-      )}
+      <p className="badge-pop" style={{ width: 'fit-content', margin: '0 auto 40rpx', display: 'block' }}>
+        本次候选 {outcome.pool.length} 道
+        {outcome.relaxed.length > 0 && ` · 放宽了${outcome.relaxed.join('、')}`}
+      </p>
       <Wheel segments={segments} targetIndex={targetIndex} onDone={finishSpin} />
       <button
         type="button"

@@ -110,3 +110,32 @@ it('避开最近会把池子掏空时自动回退并如实提示', () => {
   expect(pool.length).toBeGreaterThan(0)
   expect(relaxed).toContain('避开最近吃过的')
 })
+
+// ── 池子保底（MIN_POOL）：窄池自动放宽软约束 ────────
+
+it('夜宵×食堂是窄池：硬时段保持窄，自动时段放宽到保底以上', () => {
+  const me = blankPerson('我')
+  // 用户明确选的夜宵：即使窄也保留
+  const hard = matchDishes(BUILTIN_DISHES, '食堂', [me], { meal: '夜宵' })
+  expect(hard.pool.length).toBeGreaterThan(0)
+  expect(hard.pool.length).toBeLessThan(12)
+  for (const d of hard.pool) expect(d.meals).toContain('夜宵')
+  expect(hard.relaxed).not.toContain('时段（自动）')
+
+  // 系统自动感知的夜宵：池子太窄就放宽，凑出丰富候选
+  const soft = matchDishes(BUILTIN_DISHES, '食堂', [me], { meal: '夜宵', mealSoft: true })
+  expect(soft.pool.length).toBeGreaterThanOrEqual(12)
+  expect(soft.relaxed).toContain('时段（自动）')
+})
+
+it('明确设置的硬约束（辣度/预算/类型）不因池子窄而被背叛', () => {
+  const me = { ...blankPerson('我'), budget: 15, spicy: 0, likes: ['面食' as const] }
+  const { pool, relaxed } = matchDishes(BUILTIN_DISHES, '食堂', [me])
+  expect(pool.length).toBeGreaterThan(0)
+  for (const d of pool) {
+    expect(d.type).toBe('面食')
+    expect(d.spicy).toBeLessThanOrEqual(0)
+    expect(d.price).toBeLessThanOrEqual(15)
+  }
+  expect(relaxed).toEqual([])
+})
