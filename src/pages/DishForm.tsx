@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChipGroup } from '../components/Chips'
 import { PageHeader } from '../components/PageHeader'
-import { useAppStore } from '../store/useAppStore'
+import { PERSONAL_MENU_ID, useAppStore } from '../store/useAppStore'
 import { DISH_TYPES, SCENES, TAG_OPTIONS, type Dish, type Scene } from '../types'
 
 const SPICY_OPTS = [
@@ -12,10 +12,11 @@ const SPICY_OPTS = [
 ]
 
 export default function DishForm() {
-  const { editingDish, customDishes, saveCustom, setView } = useAppStore()
-  const isEdit = editingDish != null && customDishes.some((d) => d.id === editingDish.id)
+  const { editingDish, userDishes, menus, saveCustom, setView } = useAppStore()
+  const isEdit = editingDish != null && userDishes.some((d) => d.id === editingDish.id)
 
   const [name, setName] = useState(editingDish?.name ?? '')
+  const [menuId, setMenuId] = useState<string>(editingDish?.menuId ?? PERSONAL_MENU_ID)
   const [scenes, setScenes] = useState<Scene[]>(editingDish?.scenes ?? [])
   const [price, setPrice] = useState(editingDish?.price ?? 15)
   const [spicy, setSpicy] = useState<number>(editingDish?.spicy ?? 1)
@@ -30,6 +31,7 @@ export default function DishForm() {
     saveCustom({
       id: isEdit && editingDish ? editingDish.id : `c${Date.now()}`,
       name: name.trim(),
+      menuId,
       scenes,
       price,
       spicy: spicy as Dish['spicy'],
@@ -52,6 +54,13 @@ export default function DishForm() {
       />
 
       <div className="sticker animate-fade-up px-4 py-5">
+        <ChipGroup
+          label="🗂 归属菜单"
+          options={menus.map((m) => ({ value: m.id, label: m.title }))}
+          selected={[menuId]}
+          onToggle={(v) => setMenuId(String(v))}
+        />
+
         <label className="mb-5 block">
           <span className="mb-2 block font-display text-base">🍚 菜名</span>
           <input

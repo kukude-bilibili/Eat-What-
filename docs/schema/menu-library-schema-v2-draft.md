@@ -1,6 +1,12 @@
-# Schema 草案：菜单库 v2（schemaVersion = 2）
+# Schema：菜单库 v2（schemaVersion = 2）
 
-> 状态：DRAFT v0.1，供 research/menu-library-competitor 分支产出后蒸馏定稿。字段可能随分支结论调整，但**统一抽象与不变式不回退**。
+> 状态：**ACCEPTED**（2026-09-26 定稿，feature/menu-library-model 按此实现）。定稿决议：
+> 1. `SHOP_CATEGORIES` 枚举定稿 13 项（快餐/面馆/麻辣烫冒菜/烧烤/汉堡炸鸡/川湘菜/奶茶饮品/日料/韩餐/轻食沙拉/火锅/甜品烘焙/其他）
+> 2. 校园层级 = **自由文本标题**（Menu.title 不结构化拆分）
+> 3. `Menu.kind` 三值：`personal | campus | shop`（评审定稿：迁移默认菜单是 personal，语义不冒充校园）；不变式：kind='shop' ⇔ shopId 非空，personal/campus ⇔ shopId 为 null
+> 4. `Menu.libraryId` 必填（多库地基，本轮默认 lib_default）
+> 5. 孤儿数据不丢弃：孤儿菜→"未分类（恢复）"菜单 + warning；悬空 shopId 的菜单→降级 campus + warning；孤儿 Shop 保留
+> 6. 高版本数据保护：存储层检测更高 schemaVersion 拒写不覆盖，原数据原地保留 + UI 提示
 
 ## 总览
 
@@ -87,9 +93,9 @@ interface MenuPack {        // 菜单包（分享载体）从 V1 升级；V1 包
 4. 所有外部进入的数据（迁移/导入/包）必须过 sanitize 接缝（沿用现有 toDish 等纯函数）
 5. `schemaVersion` 存于持久化状态根；读取时版本高于当前实现 → 拒绝加载用户数据（只用内置库），原始数据保留不覆盖
 
-## 待分支产出后定稿的开放字段
+## ~~待分支产出后定稿的开放字段~~（已全部定稿，见顶部决议 1-2、5-6）
 
-1. `Shop.category` 的枚举 SHOP_CATEGORIES（分支给竞品对照后定）
-2. 校园层级深度：食堂→楼层→窗口 三级 or 两级（影响 Menu.title 是否结构化拆分）
-3. 菜单包 V2 是否带签名/来源链
-4. 内置 248 道菜是否建模进 MenuLibrary（**当前倾向：不进**——内置库是发版常量，模型只管用户数据；转盘池 = 内置常量 + 用户 Menu 的 dishes。分支如有强反例可翻案）
+~~1. Shop.category 枚举~~ ✅ 13 项，见 types.ts SHOP_CATEGORIES
+~~2. 校园层级深度~~ ✅ 自由文本标题
+~~3. 菜单包 V2 签名/来源链~~ ✅ 本期不做，pack 字段预留 from（署名）
+~~4. 内置菜是否建模~~ ✅ 不进 MenuLibrary（发版常量）

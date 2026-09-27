@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import { PageHeader } from '../components/PageHeader'
 import { AI_KEY_URL, fileToDataUrl, scanMenuPhoto, type DishDraft } from '../lib/ai'
-import { useAppStore } from '../store/useAppStore'
+import { PERSONAL_MENU_ID, useAppStore } from '../store/useAppStore'
 import { SCENES, SCENE_EMOJI, type Scene } from '../types'
 
 export default function ScanDish() {
-  const { aiKey, setAiKey, saveDraftDishes, setView } = useAppStore()
+  const { aiKey, setAiKey, saveDraftDishes, menus, setView } = useAppStore()
   const [scene, setScene] = useState<Scene>('食堂')
+  const [menuId, setMenuId] = useState<string>(PERSONAL_MENU_ID)
   const [preview, setPreview] = useState<string | null>(null)
   const [drafts, setDrafts] = useState<DishDraft[]>([])
   const [picked, setPicked] = useState<Set<number>>(new Set())
@@ -46,12 +47,26 @@ export default function ScanDish() {
 
   const save = () => {
     const chosen = drafts.filter((_, i) => picked.has(i))
-    setSaved(saveDraftDishes(chosen, scene))
+    setSaved(saveDraftDishes(chosen, scene, menuId))
   }
 
   return (
     <div>
       <PageHeader title="🤖 AI 拍菜" sub="拍张菜单照片，自动打标进菜库" onBack={() => setView('library')} />
+
+      {/* 归属菜单：先选归属再识别（调研结论：归属先选后识） */}
+      <div className="mb-3 flex flex-wrap gap-2">
+        {menus.map((m) => (
+          <button
+            key={m.id}
+            type="button"
+            onClick={() => setMenuId(m.id)}
+            className={`chip px-3 py-1.5 text-sm font-bold ${menuId === m.id ? 'chip-on' : ''}`}
+          >
+            🗂 {m.title}
+          </button>
+        ))}
+      </div>
 
       {/* 场景归属 */}
       <div className="mb-4 flex gap-2">

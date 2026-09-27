@@ -38,7 +38,8 @@ function Confetti() {
 }
 
 export default function Result() {
-  const { outcome, mode, single, groupPeople, respinCount, startSpin, goHome } = useAppStore()
+  const { outcome, mode, single, groupPeople, respinCount, startSpin, goHome, menus, shops } =
+    useAppStore()
   const [copied, setCopied] = useState(false)
   const [header] = useState(() => pickHeader())
   const [warm] = useState(() => pickWarmLine())
@@ -90,6 +91,8 @@ export default function Result() {
   const dish = outcome.result!
   const people = mode === 'single' ? [single] : groupPeople
   const reason = makeReason(dish, people, outcome.relaxed)
+  const menu = dish.menuId ? menus.find((m) => m.id === dish.menuId) : undefined
+  const shop = menu?.shopId ? shops.find((sp) => sp.id === menu.shopId) : undefined
 
   const copy = async () => {
     try {
@@ -120,6 +123,12 @@ export default function Result() {
           <div className="animate-pop-in text-5xl">🎉</div>
           <h1 className="mt-2 animate-pop-in font-display text-4xl leading-tight">{dish.name}</h1>
           <p className="mt-1.5 text-sm text-stone-500">{dish.blurb}</p>
+          {menu && (
+            <p className="mt-2 text-xs text-stone-400">
+              来自 {menu.title}
+              {shop ? ` · ${shop.category}${shop.hours ? ` · ${shop.hours}` : ''}` : ''}
+            </p>
+          )}
         </div>
 
         <div className="border-t-2 border-dashed border-[rgba(63,42,26,0.3)] px-5 py-3 text-left">

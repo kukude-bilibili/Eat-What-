@@ -3,14 +3,58 @@ import { PrefEditor } from '../components/PrefEditor'
 import { useAppStore } from '../store/useAppStore'
 
 export default function Setup() {
-  const { single, setSingle, startSpin, setView, avoidRecent, setAvoidRecent, history } =
-    useAppStore()
+  const {
+    single,
+    setSingle,
+    startSpin,
+    setView,
+    avoidRecent,
+    setAvoidRecent,
+    history,
+    spinMenu,
+    setSpinMenu,
+    menus,
+    userDishes,
+  } = useAppStore()
 
   return (
     <div>
       <PageHeader title="你的需求" sub="都可以跳过，选了摇得更准" onBack={() => setView('home')} />
 
       <PrefEditor value={single} onChange={setSingle} />
+
+      <div className="sticker-flat mt-4 px-4 py-3">
+        <div className="font-display mb-2 text-sm">🎯 转盘范围</div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={`chip ${spinMenu === 'all' ? 'chip-on' : ''}`}
+            onClick={() => setSpinMenu('all')}
+          >
+            全部
+          </button>
+          <button
+            type="button"
+            className={`chip ${spinMenu === 'mine' ? 'chip-on' : ''}`}
+            onClick={() => setSpinMenu('mine')}
+          >
+            我的全部（{userDishes.length}）
+          </button>
+          {menus.map((m) => {
+            const count = userDishes.filter((d) => d.menuId === m.id).length
+            return (
+              <button
+                key={m.id}
+                type="button"
+                className={`chip ${spinMenu === m.id ? 'chip-on' : ''}`}
+                onClick={() => setSpinMenu(m.id)}
+              >
+                {m.title}（{count}）
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       <div className="sticker-flat mt-4 flex items-center justify-between px-4 py-3">
         <div>
