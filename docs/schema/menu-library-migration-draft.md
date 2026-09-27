@@ -1,6 +1,6 @@
-# 迁移策略草案：customDishes → personal Menu（schemaVersion 1 → 2）
+# 迁移策略：customDishes → personal Menu（schemaVersion 1 → 2）
 
-> 状态：DRAFT v0.1。原则：**数据无损、可回滚、失败可降级**。
+> 状态：**ACCEPTED + 已实现**（persist migrate 见 src/store/useAppStore.ts；纯函数见 src/lib/migrate.ts；测试见 src/lib/__tests__/menu-v2.test.ts）
 
 ## 现状（v1）
 

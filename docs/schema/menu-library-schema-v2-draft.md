@@ -1,6 +1,6 @@
 # Schema：菜单库 v2（schemaVersion = 2）
 
-> 状态：**ACCEPTED**（2026-09-26 定稿，feature/menu-library-model 按此实现）。定稿决议：
+> 状态：**ACCEPTED + 已实现**（2026-09-26 定稿，随 feature/menu-library-model squash 至 main 269acd9 生效；eat-what-mini 同步 c5a0e13）。定稿决议：
 > 1. `SHOP_CATEGORIES` 枚举定稿 13 项（快餐/面馆/麻辣烫冒菜/烧烤/汉堡炸鸡/川湘菜/奶茶饮品/日料/韩餐/轻食沙拉/火锅/甜品烘焙/其他）
 > 2. 校园层级 = **自由文本标题**（Menu.title 不结构化拆分）
 > 3. `Menu.kind` 三值：`personal | campus | shop`（评审定稿：迁移默认菜单是 personal，语义不冒充校园）；不变式：kind='shop' ⇔ shopId 非空，personal/campus ⇔ shopId 为 null
