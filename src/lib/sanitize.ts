@@ -114,11 +114,12 @@ export function toPersonList(v: unknown): PersonPref[] {
 
 export interface HistoryEntry {
   name: string
-  scene: Scene
+  /** 菜品记录的场景；餐馆记录无此字段 */
+  scene?: Scene
   date: string
 }
 
-/** 校验历史记录（上限 10 条，无名字的丢弃） */
+/** 校验历史记录（上限 10 条；餐馆记录无 scene 字段） */
 export function toHistory(v: unknown): HistoryEntry[] {
   if (!Array.isArray(v)) return []
   return v
@@ -127,7 +128,14 @@ export function toHistory(v: unknown): HistoryEntry[] {
     .flatMap((o) => {
       const name = clampStr(o.name, 30)
       if (!name) return []
-      return [{ name, scene: pickEnum<Scene>(o.scene, SCENES, '食堂'), date: clampStr(o.date, 12) }]
+      const scene = SCENES.includes(o.scene as Scene) ? (o.scene as Scene) : undefined
+      return [
+        {
+          name,
+          ...(scene ? { scene } : {}),
+          date: clampStr(o.date, 12),
+        },
+      ]
     })
 }
 

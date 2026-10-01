@@ -63,13 +63,14 @@ it('toPersonList：超员截断到 8 人', () => {
   expect(toPersonList(people)).toHaveLength(8)
 })
 
-it('toHistory：丢无名项、封顶 10 条、非法场景回退', () => {
+it('toHistory：丢无名项、封顶 10 条、非法场景省略（餐馆记录无场景）', () => {
   const h = toHistory([
     { name: '', scene: '食堂' },
     { name: '麻酱拌面', scene: '火星', date: '9/26' },
   ])
   expect(h).toHaveLength(1)
-  expect(h[0]).toMatchObject({ name: '麻酱拌面', scene: '食堂', date: '9/26' })
+  expect(h[0]).toMatchObject({ name: '麻酱拌面', date: '9/26' })
+  expect(h[0].scene).toBeUndefined()
   expect(toHistory(Array.from({ length: 30 }, (_, i) => ({ name: `菜${i}` })))).toHaveLength(10)
 })
 

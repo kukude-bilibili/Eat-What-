@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 import type { DishDraft } from '../lib/ai'
+import { fetchRestaurants } from '../lib/amap'
 import { BUILTIN_DISHES } from '../data/dishes'
 import { BACKUP_KEY, detectStoredVersion, migrateV1toV2, SCHEMA_VERSION } from '../lib/migrate'
 import { matchDishes, type MatchOutcome } from '../lib/match'
@@ -25,6 +26,7 @@ import {
   type PersonPref,
   type Scene,
   type Shop,
+  type ShopCategory,
   type SpinScope,
 } from '../types'
 
@@ -43,7 +45,8 @@ export type Mode = 'single' | 'group'
 
 export interface HistoryItem {
   name: string
-  scene: Scene
+  /** 菜品记录的场景；餐馆记录无此字段 */
+  scene?: Scene
   date: string
 }
 
@@ -61,8 +64,20 @@ interface AppState {
   meal: MealPref
   mealTouched: boolean
   avoidRecent: boolean
-  /** 转盘库范围：全部 / 我的所有菜单 / 指定菜单 id */
+  /** 转盘库范围：全部 / 我的所有菜单 / 指定菜单 id（店内摇菜用） */
   spinMenu: SpinScope
+  /** 餐馆转盘：高德 POI + 手动添加的餐馆池 */
+  restaurants: Shop[]
+  /** 餐馆品类筛选 */
+  restaurantCategory: 'all' | ShopCategory
+  /** 餐馆数据加载状态 */
+  restaurantsLoading: boolean
+  restaurantsError?: string
+  restaurantsFromCache: boolean
+  /** 学校坐标（GCJ-02），导航/距离展示用 */
+  schoolLocation?: { lat: number; lng: number }
+  /** 餐馆转盘结果 */
+  restaurantResult: { shop: Shop; poolSize: number; notes: string[] } | null
   /** 本地数据来自更高版本实现时置位：拒写不覆盖，只读内置库 */
   blockedByHigherVersion: boolean
   single: PersonPref
@@ -85,6 +100,13 @@ interface AppState {
   setMeal: (m: MealPref, touched?: boolean) => void
   setAvoidRecent: (v: boolean) => void
   setSpinMenu: (v: SpinScope) => void
+  /** 拉取学校周边餐馆（优先缓存，force 绕过） */
+  loadRestaurants: (force?: boolean) => Promise<void>
+  setRestaurantCategory: (c: 'all' | ShopCategory) => void
+  /** 提交摇餐馆结果：记历史 + 结果页 */
+  commitRestaurantPick: (shop: Shop, poolSize: number, notes: string[]) => void
+  /** 手动添加一家餐馆（source: 'user'） */
+  addRestaurant: (input: { name: string; category: string; hours?: string; address?: string }) => void
   setSingle: (p: PersonPref) => void
   setGroupPeople: (p: PersonPref[]) => void
   /** 计算匹配结果：正常进转盘页，凑不齐直接进结果页（兜底候选）；respin=true 表示单人"再来一次" */
@@ -127,6 +149,11 @@ export const useAppStore = create<AppState>()(
       mealTouched: false,
       avoidRecent: true,
       spinMenu: 'all',
+      restaurants: [],
+      restaurantCategory: 'all',
+      restaurantsLoading: false,
+      restaurantsFromCache: false,
+      restaurantResult: null,
       blockedByHigherVersion: false,
       single: blankPerson('我'),
       groupPeople: [],
@@ -167,6 +194,53 @@ export const useAppStore = create<AppState>()(
         set((s) => ({ meal: m, mealTouched: touched ? true : s.mealTouched })),
       setAvoidRecent: (avoidRecent) => set({ avoidRecent }),
       setSpinMenu: (spinMenu) => set({ spinMenu }),
+
+      loadRestaurants: async (force = false) => {
+        const s = get()
+        if (s.restaurantsLoading) return
+        if (!force && s.restaurants.length > 0) return // 已有数据（含缓存回填）
+        set({ restaurantsLoading: true, restaurantsError: undefined })
+        const r = await fetchRestaurants()
+        set((st) => ({
+          restaurants: r.shops.length > 0 ? r.shops : st.restaurants,
+          restaurantsLoading: false,
+          restaurantsFromCache: r.fromCache,
+          ...(r.schoolLocation ? { schoolLocation: r.schoolLocation } : {}),
+          ...(r.error ? { restaurantsError: r.error } : { restaurantsError: undefined }),
+        }))
+      },
+
+      setRestaurantCategory: (restaurantCategory) => set({ restaurantCategory }),
+
+      /** 提交摇餐馆结果：记历史 + 结果页（转盘落点由页面预先决定） */
+      commitRestaurantPick: (shop, poolSize, notes) => {
+        const s = get()
+        const date = new Date().toLocaleDateString('zh-CN', { month: 'numeric', day: 'numeric' })
+        set({
+          restaurantResult: { shop, poolSize, notes },
+          history: [{ name: shop.name, date }, ...s.history].slice(0, 10),
+          view: 'result',
+        })
+      },
+
+      /** 手动添加一家餐馆（source: 'user'） */
+      addRestaurant: (input) => {
+        const s = get()
+        const name = input.name.trim().slice(0, 24)
+        if (!name) return
+        const now = Date.now()
+        const shop: Shop = {
+          id: `shop_user_${now}`,
+          libraryId: DEFAULT_LIBRARY_ID,
+          name,
+          category: (input.category as Shop['category']) ?? '其他',
+          ...(input.hours?.trim() ? { hours: input.hours.trim().slice(0, 30) } : {}),
+          ...(input.address?.trim() ? { location: { lat: 0, lng: 0, address: input.address.trim().slice(0, 60) } } : {}),
+          source: 'user',
+          updatedAt: now,
+        }
+        set({ restaurants: [...s.restaurants, shop] })
+      },
       setSingle: (p) => set({ single: toPerson(p, '我') }),
       setGroupPeople: (people) => set({ groupPeople: toPersonList(people) }),
 
@@ -390,6 +464,8 @@ export const useAppStore = create<AppState>()(
         mealTouched: s.mealTouched,
         avoidRecent: s.avoidRecent,
         spinMenu: s.spinMenu,
+        restaurants: s.restaurants,
+        restaurantCategory: s.restaurantCategory,
         single: s.single,
         groupPeople: s.groupPeople,
         libraries: s.libraries,

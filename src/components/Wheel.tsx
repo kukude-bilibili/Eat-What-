@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Dish } from '../types'
 
 /** 复古餐盘色盘 */
 const COLORS = ['#ffd166', '#ff8c61', '#9bc995', '#86bbd9', '#f6aac8', '#fff1b8', '#ffc6a8', '#b8e0d2']
 
+/** 转盘扇区最小接口：餐馆/菜品都能转 */
+export interface WheelSegment {
+  id: string
+  name: string
+}
+
 interface Props {
-  segments: Dish[]
+  segments: WheelSegment[]
   targetIndex: number
   onDone: () => void
 }

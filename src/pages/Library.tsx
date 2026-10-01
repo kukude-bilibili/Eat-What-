@@ -385,7 +385,7 @@ export default function Library() {
       {list.length === 0 && (
         <p className="py-10 text-center text-sm text-stone-400">
           {userDishes.length === 0
-            ? '还没有自己的菜：点 🤖拍菜 扫食堂菜单，或 ＋添加 手动录入'
+            ? '还没有自己的菜：点 🤖拍菜 扫菜单，或 ＋添加 手动录入'
             : '没有找到，换个词试试？'}
         </p>
       )}

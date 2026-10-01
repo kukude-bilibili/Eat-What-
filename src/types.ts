@@ -136,6 +136,12 @@ export interface Shop {
   }
   /** 自由文本，如 "10:00-22:00" */
   hours?: string
+  /** 人均（元），来自高德 biz_ext.cost（有则展示/筛选） */
+  cost?: number
+  /** 高德评分（有则展示） */
+  rating?: string
+  /** 联系电话（有则展示） */
+  tel?: string
   source: 'poi' | 'user'
   /** poi 时存高德 pid，可回查刷新 */
   sourceRef?: string
